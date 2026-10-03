@@ -67,7 +67,7 @@ def check_package(zip_path_str: str, expected_id: str, expected_version: str):
                 print(f"Error: nested path {entry} found in zip archive")
                 return 1
 
-    print(f"✓ Package {filename} verified successfully.")
+    print(f"OK: package {filename} verified successfully.")
     return 0
 
 if __name__ == "__main__":
