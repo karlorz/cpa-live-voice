@@ -1,7 +1,7 @@
 # CPA Live Voice Scheduler Plugin (`cpa-live-voice`)
 
 [![CI](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.2-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
+[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A standalone dynamic C-shared ABI plugin for [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) (CPA).
@@ -109,6 +109,20 @@ http://<host>:<port>/v0/resource/plugins/cpa-live-voice/status
 - **Audit Table**: Real-time traffic breakdown, pool health indicators, candidate validator, and recent-decision audit log.
 
 ---
+
+## Testing and Verification
+
+- Run `go test -race ./...` for the unit and integration suite. The native host-load test runs in a bounded child process; the parent waits for its exit before removing the shared library. Each repeated run gets its own process and runtime threads.
+- Run `python3 scripts/test_smoke_test.py` for cleanup regressions covering startup failure, startup timeout, interrupted runners, and children that survive their wrapper or ignore `SIGTERM`. Tests assert the direct child is reaped and its process group is empty.
+- On macOS and Linux, run the real server smoke test:
+
+  ```sh
+  python3 scripts/smoke_test.py --server /path/to/cli-proxy-api --plugin bin/cpa-live-voice.dylib
+  ```
+
+  Use `.so` on Linux. The runner creates an inert temporary configuration, requires successful plugin registration and an HTTP 200 JSON response from `/v1/models`, then verifies a zero-status server exit and an empty process group. Cleanup escalates to `SIGKILL` on timeout and reports test failure. Temporary files are removed after process exit is confirmed.
+
+The runner handles `SIGTERM` and `SIGINT`. An external supervisor is required if the runner itself receives `SIGKILL` or a child deliberately creates a separate session. `--local-model` disables remote model catalog updates; the server may still run its version updater.
 
 ## Building and Packaging
 

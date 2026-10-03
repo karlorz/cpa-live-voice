@@ -229,7 +229,7 @@ const ResourcePageHTML = `<!doctype html>
   <div class="container">
     <header>
       <div class="header-title">
-        <h1>Live Voice Scheduler <span class="badge badge-primary">v0.1.2</span></h1>
+        <h1>Live Voice Scheduler <span class="badge badge-primary">v0.1.3</span></h1>
         <p>Codex Live Voice (gpt-live-1-codex) OAuth candidate routing & delegation controller</p>
       </div>
       <div>
@@ -363,7 +363,7 @@ const ResourcePageHTML = `<!doctype html>
     </div>
 
     <div class="footer">
-      cpa-live-voice v0.1.2 &bull; Native Go Dynamic Plugin &bull; <a href="https://github.com/karlorz/cpa-live-voice" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">GitHub Repository</a>
+      cpa-live-voice v0.1.3 &bull; Native Go Dynamic Plugin &bull; <a href="https://github.com/karlorz/cpa-live-voice" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">GitHub Repository</a>
     </div>
   </div>
 

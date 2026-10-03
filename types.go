@@ -10,7 +10,7 @@ import (
 const (
 	PluginID               = "cpa-live-voice"
 	PluginName             = "cpa-live-voice"
-	PluginVersion          = "0.1.2"
+	PluginVersion          = "0.1.3"
 	PluginAuthor           = "karlorz"
 	PluginGitHubRepository = "https://github.com/karlorz/cpa-live-voice"
 	PluginLogo             = "https://github.com/karlorz/cpa-live-voice"

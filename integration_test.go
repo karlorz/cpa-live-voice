@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -178,7 +180,17 @@ func TestCPAIntegration(t *testing.T) {
 
 // TestDynamicLibraryHostLoad builds the plugin, loads it through CPA's native
 // plugin host, and exercises registration plus scheduler dispatch through the ABI.
+// The test executes in an isolated child process so dynamic library loading and runtime
+// threads are bounded to the child's lifetime and do not leak into the parent runner.
 func TestDynamicLibraryHostLoad(t *testing.T) {
+	if os.Getenv("TEST_DYNAMIC_LIBRARY_CHILD") == "1" {
+		runDynamicLibraryHostLoadChild(t)
+		return
+	}
+
+	buildCtx, buildCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer buildCancel()
+
 	tempDir := t.TempDir()
 	ext := ".so"
 	if runtime.GOOS == "darwin" {
@@ -188,10 +200,34 @@ func TestDynamicLibraryHostLoad(t *testing.T) {
 	}
 
 	libPath := filepath.Join(tempDir, PluginID+ext)
-	cmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", libPath, ".")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	buildCmd := exec.CommandContext(buildCtx, "go", "build", "-buildmode=c-shared", "-o", libPath, ".")
+	buildCmd.WaitDelay = 5 * time.Second
+	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("go build -buildmode=c-shared failed: %v, output: %s", err, string(output))
+	}
+
+	helperCtx, helperCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer helperCancel()
+
+	childCmd := exec.CommandContext(helperCtx, os.Args[0], "-test.run=^TestDynamicLibraryHostLoad$", "-test.v")
+	childCmd.WaitDelay = 5 * time.Second
+	childCmd.Env = append(os.Environ(),
+		"TEST_DYNAMIC_LIBRARY_CHILD=1",
+		"TEST_DYNAMIC_LIBRARY_PATH="+libPath,
+	)
+	output, err := childCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("child process failed: %v, output:\n%s", err, string(output))
+	}
+	if !childCmd.ProcessState.Success() {
+		t.Fatalf("child process did not exit cleanly, output:\n%s", string(output))
+	}
+}
+
+func runDynamicLibraryHostLoadChild(t *testing.T) {
+	libPath := os.Getenv("TEST_DYNAMIC_LIBRARY_PATH")
+	if libPath == "" {
+		t.Fatal("TEST_DYNAMIC_LIBRARY_PATH environment variable is required in child mode")
 	}
 
 	var raw yaml.Node
@@ -205,7 +241,7 @@ func TestDynamicLibraryHostLoad(t *testing.T) {
 	host := cpapluginhost.New()
 	host.ApplyConfig(context.Background(), cpapluginhost.RuntimeConfig{
 		Enabled: true,
-		Dir:     tempDir,
+		Dir:     filepath.Dir(libPath),
 		Configs: map[string]cpapluginhost.PluginInstanceConfig{
 			PluginID: {
 				Enabled:  &enabled,
@@ -214,9 +250,9 @@ func TestDynamicLibraryHostLoad(t *testing.T) {
 			},
 		},
 	})
-	// The library stays loaded for the process lifetime: dlclose of a Go
-	// c-shared library leaves orphaned runtime threads and deadlocks this
-	// process, so host.ShutdownAll must not run inside `go test`.
+
+	// Dlclose of Go c-shared library leaves orphaned runtime threads and deadlocks,
+	// so host.ShutdownAll is omitted and child exit bounds runtime thread lifetime.
 	if !host.HasScheduler() {
 		t.Fatal("CPA host did not activate the plugin scheduler")
 	}
