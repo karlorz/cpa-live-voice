@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-assets:
+    name: Build Release Asset (${{ matrix.goos }}/${{ matrix.goarch }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build and Package
+        run: |
+          make package VERSION=${{ steps.version.outputs.version }}
+          make check VERSION=${{ steps.version.outputs.version }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.zip
+            dist/checksums.txt
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build-release-assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-assets
+
+      - name: Aggregate artifacts and checksums
+        run: |
+          mkdir -p release-dist
+          find downloaded-assets -type f -name "*.zip" -exec cp {} release-dist/ \;
+          cat downloaded-assets/*/checksums.txt | sort -u > release-dist/checksums.txt
+          echo "Release directory contents:"
+          ls -la release-dist
+          echo "Aggregated checksums.txt:"
+          cat release-dist/checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-dist/*.zip
+            release-dist/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true

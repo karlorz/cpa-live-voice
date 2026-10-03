@@ -1,0 +1,16 @@
+# Binaries and build artifacts
+bin/
+dist/
+*.so
+*.dylib
+*.dll
+*.h
+*.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+*.test
+*.out

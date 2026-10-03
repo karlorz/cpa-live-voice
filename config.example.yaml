@@ -1,0 +1,30 @@
+# Example configuration for cpa-live-voice plugin
+# Place under plugins.configs.cpa-live-voice in your CPA config.yaml
+
+plugins:
+  enabled: true
+  dir: "plugins"
+  configs:
+    cpa-live-voice:
+      enabled: true
+      # IMPORTANT: Priority MUST be higher than any other scheduler plugins.
+      # cpa-live-voice is the sole active scheduler; it directly delegates normal
+      # non-Live requests to CPA's built-in scheduler, so lower-priority scheduler
+      # plugins will not run.
+      priority: 100
+
+      # Allowed OAuth authentication IDs for Codex Live Voice (gpt-live-1-codex).
+      # Only requests for provider=codex and model=gpt-live-1-codex are routed through this pool.
+      live_auth_ids:
+        - "codex-account-primary"
+        - "codex-account-secondary"
+
+      # Selection strategy across matching candidates in the live pool:
+      # - "fill-first": selects the first matching candidate in host-provided candidate order (default).
+      # - "round-robin": race-safe round-robin rotation across available matching candidates.
+      strategy: "fill-first"
+
+      # When true (default): if no candidate in the request matches live_auth_ids,
+      # rejects the request immediately with error code "live_oauth_unavailable".
+      # When false: delegates un-matched Live requests to CPA's built-in scheduler.
+      fail_closed: true
