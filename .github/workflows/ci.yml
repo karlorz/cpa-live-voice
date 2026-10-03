@@ -61,11 +61,11 @@ jobs:
 
       - name: Build and Package
         run: |
-          make package VERSION=0.1.0
+          make package VERSION=0.1.1
 
       - name: Verify Package Layout
         run: |
-          make check VERSION=0.1.0
+          make check VERSION=0.1.1
 
   build-cross:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})

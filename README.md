@@ -1,7 +1,7 @@
 # CPA Live Voice Scheduler Plugin (`cpa-live-voice`)
 
 [![CI](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A standalone dynamic C-shared ABI plugin for [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) (CPA).
@@ -90,7 +90,7 @@ All management endpoints require the CPA Management Key passed in the `Authoriza
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/v0/management/plugins/cpa-live-voice/status` | Returns active plugin configuration, pool metrics, counters, and the bounded recent-decision history (max 32). |
-| `POST` | `/v0/management/plugins/cpa-live-voice/validate` | Accepts candidate inventory IDs (`{"candidates":[{"id":"..."}]}`) and checks matching/missing pool health without host credential callbacks. Limited to 64 KiB request bodies. |
+| `POST` | `/v0/management/plugins/cpa-live-voice/validate` | Compares `live_auth_ids` with a candidate ID list (`{"candidates":[{"id":"..."}]}`). The dashboard loads CPA auth-file IDs automatically and does not require a pasted snapshot. Limited to 64 KiB request bodies. |
 | `GET` | `/v0/management/plugins/cpa-live-voice/config-example` | Returns configuration template and defaults as JSON and YAML. |
 
 ### Browser Resource Dashboard
@@ -116,7 +116,7 @@ make test             # Run all unit and integration tests with race detector
 make vet              # Run go vet
 make fmt              # Run gofmt -s -w
 make build            # Compile c-shared dynamic library to bin/cpa-live-voice.<ext>
-make package          # Build platform zip to dist/cpa-live-voice_0.1.0_<os>_<arch>.zip & checksums.txt
+make package          # Build platform zip to dist/cpa-live-voice_<version>_<os>_<arch>.zip & checksums.txt
 make check            # Verify archive layout against CPA store requirements
 make clean            # Remove build artifacts
 ```
@@ -124,7 +124,7 @@ make clean            # Remove build artifacts
 ### Release Asset Specification
 Official release assets conform to the CPA dynamic plugin store format:
 ```
-dist/cpa-live-voice_0.1.0_<goos>_<goarch>.zip
+dist/cpa-live-voice_<version>_<goos>_<goarch>.zip
 dist/checksums.txt
 ```
 The root of each `.zip` contains exactly the dynamic library binary (`cpa-live-voice.so`, `cpa-live-voice.dylib`, or `cpa-live-voice.dll`) with no nested directories or extraneous files.

@@ -1,5 +1,5 @@
 PLUGIN_ID := cpa-live-voice
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)

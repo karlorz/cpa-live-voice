@@ -229,7 +229,7 @@ const ResourcePageHTML = `<!doctype html>
   <div class="container">
     <header>
       <div class="header-title">
-        <h1>Live Voice Scheduler <span class="badge badge-primary">v0.1.0</span></h1>
+        <h1>Live Voice Scheduler <span class="badge badge-primary">v0.1.1</span></h1>
         <p>Codex Live Voice (gpt-live-1-codex) OAuth candidate routing & delegation controller</p>
       </div>
       <div>
@@ -304,12 +304,11 @@ const ResourcePageHTML = `<!doctype html>
     <!-- Candidate Inventory Validation -->
     <div class="panel">
       <div class="panel-header">
-        <h2>Candidate Inventory Validator</h2>
-        <button id="btnValidate" class="btn-secondary">Run Validation</button>
+        <h2>Host Inventory Check</h2>
+        <button id="btnValidate" class="btn-secondary">Refresh Check</button>
       </div>
       <div class="validate-box">
-        <label for="candidatesInput">Paste host candidate inventory snapshot (JSON) or validate against empty test list:</label>
-        <textarea id="candidatesInput" placeholder='{"candidates": [{"id": "codex-account-primary"}, {"id": "codex-account-secondary"}]}'></textarea>
+        <p class="card-subtext">Compares the configured live pool against CPA auth files automatically. No paste required.</p>
         <div id="validateOutput" class="validate-result" role="region" aria-live="polite"></div>
       </div>
     </div>
@@ -364,7 +363,7 @@ const ResourcePageHTML = `<!doctype html>
     </div>
 
     <div class="footer">
-      cpa-live-voice v0.1.0 &bull; Native Go Dynamic Plugin &bull; <a href="https://github.com/karlorz/cpa-live-voice" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">GitHub Repository</a>
+      cpa-live-voice v0.1.1 &bull; Native Go Dynamic Plugin &bull; <a href="https://github.com/karlorz/cpa-live-voice" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">GitHub Repository</a>
     </div>
   </div>
 
@@ -434,6 +433,7 @@ const ResourcePageHTML = `<!doctype html>
         })
         .then(function(data) {
           renderStatus(data);
+          runValidation();
         })
         .catch(function(err) {
           var poolBody = document.getElementById("poolTableBody");
@@ -502,34 +502,112 @@ const ResourcePageHTML = `<!doctype html>
         }
       }
 
-      function runValidation() {
-        var inputVal = document.getElementById("candidatesInput").value.trim();
-        var payload = {};
-        if (inputVal) {
-          try {
-            payload = JSON.parse(inputVal);
-          } catch(e) {
-            alert("Invalid JSON format in candidate inventory input.");
-            return;
+      function hostCandidateIDs(payload) {
+        var files = [];
+        if (!payload) {
+          return [];
+        }
+        if (Array.isArray(payload)) {
+          files = payload;
+        } else if (Array.isArray(payload.files)) {
+          files = payload.files;
+        } else if (payload.data && Array.isArray(payload.data.files)) {
+          files = payload.data.files;
+        }
+        var ids = [];
+        var seen = {};
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i] || {};
+          var parts = [file.id, file.name, file.file_name, file.filename];
+          for (var j = 0; j < parts.length; j++) {
+            var id = String(parts[j] || "").trim();
+            if (!id || seen[id]) {
+              continue;
+            }
+            seen[id] = true;
+            ids.push(id);
           }
         }
-        var headers = getAuthHeader();
-        headers["Content-Type"] = "application/json";
+        return ids;
+      }
 
+      function fetchHostInventory() {
+        var headers = getAuthHeader();
+        var urls = ["/v8/management/credentials", "/v0/management/auth-files"];
+        function next(index) {
+          if (index >= urls.length) {
+            return Promise.reject(new Error("Could not load CPA auth-file inventory"));
+          }
+          return fetch(urls[index], { method: "GET", headers: headers }).then(function(res) {
+            if (res.status === 401 || res.status === 403) {
+              throw new Error("Management Key invalid or missing (HTTP " + res.status + ")");
+            }
+            if (res.status === 404) {
+              return next(index + 1);
+            }
+            if (!res.ok) {
+              throw new Error("Failed to load host inventory (HTTP " + res.status + ")");
+            }
+            return res.json();
+          });
+        }
+        return next(0);
+      }
+
+      function applyPoolMatchBadges(matchingIDs, missingIDs) {
+        var matching = {};
+        var missing = {};
+        var i;
+        for (i = 0; i < (matchingIDs || []).length; i++) {
+          matching[matchingIDs[i]] = true;
+        }
+        for (i = 0; i < (missingIDs || []).length; i++) {
+          missing[missingIDs[i]] = true;
+        }
+        var rows = document.querySelectorAll("#poolTableBody tr");
+        for (i = 0; i < rows.length; i++) {
+          var idCell = rows[i].querySelector("td.mono");
+          var badgeCell = rows[i].querySelector("td:last-child");
+          if (!idCell || !badgeCell) {
+            continue;
+          }
+          var id = idCell.textContent.trim();
+          if (matching[id]) {
+            badgeCell.innerHTML = '<span class="badge badge-success">Present</span>';
+          } else if (missing[id]) {
+            badgeCell.innerHTML = '<span class="badge badge-danger">Missing</span>';
+          }
+        }
+      }
+
+      function runValidation() {
+        var headers = getAuthHeader();
         var out = document.getElementById("validateOutput");
         out.style.display = "block";
         out.style.background = "var(--surface-subtle)";
         out.style.color = "var(--text)";
-        out.textContent = "Validating...";
+        out.textContent = "Checking host inventory...";
 
-        fetch("/v0/management/plugins/cpa-live-voice/validate", {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify(payload)
-        })
-        .then(function(res) {
-          if (!res.ok) throw new Error("Validation failed (HTTP " + res.status + ")");
-          return res.json();
+        fetchHostInventory()
+        .then(function(inventory) {
+          var ids = hostCandidateIDs(inventory);
+          var candidates = [];
+          for (var i = 0; i < ids.length; i++) {
+            candidates.push({ id: ids[i] });
+          }
+          var validateHeaders = getAuthHeader();
+          validateHeaders["Content-Type"] = "application/json";
+          return fetch("/v0/management/plugins/cpa-live-voice/validate", {
+            method: "POST",
+            headers: validateHeaders,
+            body: JSON.stringify({ candidates: candidates })
+          }).then(function(res) {
+            if (!res.ok) throw new Error("Validation failed (HTTP " + res.status + ")");
+            return res.json();
+          }).then(function(res) {
+            res.host_candidate_count = ids.length;
+            return res;
+          });
         })
         .then(function(res) {
           var bg = "var(--success-bg)";
@@ -544,7 +622,8 @@ const ResourcePageHTML = `<!doctype html>
           out.style.background = bg;
           out.style.color = col;
           out.innerHTML = '<strong>Health: ' + safeText(res.pool_health).toUpperCase() + '</strong> &mdash; ' + safeText(res.message) +
-            '<br><span class="mono" style="font-size: 0.8rem;">Configured: ' + res.configured_count + ' | Matching: ' + res.matching_count + ' | Missing: ' + res.missing_count + '</span>';
+            '<br><span class="mono" style="font-size: 0.8rem;">Host files: ' + (res.host_candidate_count || res.candidate_count || 0) + ' | Configured: ' + res.configured_count + ' | Matching: ' + res.matching_count + ' | Missing: ' + res.missing_count + '</span>';
+          applyPoolMatchBadges(res.matching_ids, res.missing_ids);
         })
         .catch(function(err) {
           out.style.background = "var(--danger-bg)";
