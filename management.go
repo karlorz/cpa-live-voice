@@ -158,22 +158,25 @@ func (m *ManagementHandler) handleValidate(req pluginapi.ManagementRequest) (plu
 		configuredSet[id] = struct{}{}
 	}
 
-	candidateSet := make(map[string]struct{}, len(valReq.Candidates))
+	candidateSet := make(map[string]struct{}, len(valReq.Candidates)*2)
 	var candidateIDs []string
 	for _, c := range valReq.Candidates {
 		trimmed := strings.TrimSpace(c.ID)
-		if trimmed != "" {
-			if _, exists := candidateSet[trimmed]; !exists {
-				candidateSet[trimmed] = struct{}{}
-				candidateIDs = append(candidateIDs, trimmed)
-			}
+		if trimmed == "" {
+			continue
+		}
+		if _, exists := candidateSet[trimmed]; !exists {
+			candidateIDs = append(candidateIDs, trimmed)
+		}
+		for _, alias := range uniqueIDAliases(trimmed) {
+			candidateSet[alias] = struct{}{}
 		}
 	}
 
 	var matchingIDs []string
 	var missingIDs []string
 	for _, id := range cfg.LiveAuthIDs {
-		if _, ok := candidateSet[id]; ok {
+		if configuredIDMatchesInventory(id, candidateSet) {
 			matchingIDs = append(matchingIDs, id)
 		} else {
 			missingIDs = append(missingIDs, id)
@@ -182,7 +185,7 @@ func (m *ManagementHandler) handleValidate(req pluginapi.ManagementRequest) (plu
 
 	var extraIDs []string
 	for _, id := range candidateIDs {
-		if _, ok := configuredSet[id]; !ok {
+		if !configuredIDMatchesInventory(id, configuredSet) {
 			extraIDs = append(extraIDs, id)
 		}
 	}

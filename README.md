@@ -1,7 +1,7 @@
 # CPA Live Voice Scheduler Plugin (`cpa-live-voice`)
 
 [![CI](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/karlorz/cpa-live-voice/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
+[![Version](https://img.shields.io/badge/version-0.1.2-blue.svg)](https://github.com/karlorz/cpa-live-voice/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A standalone dynamic C-shared ABI plugin for [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) (CPA).
@@ -18,9 +18,11 @@ A standalone dynamic C-shared ABI plugin for [CLIProxyAPI](https://github.com/ro
 - **Lower-Priority Scheduler Invalidation**: Because `cpa-live-voice` handles all non-Live traffic via internal built-in delegation, lower-priority plugin schedulers in the host chain will not execute.
 
 ### 2. Upstream OAuth Candidate Prerequisite
-- CPA's core Codex Live and Realtime handlers pre-filter available credentials to OAuth-only candidates before calling the scheduler.
+- CPA's core Codex Live and Realtime handlers pre-filter available credentials to OAuth-kind candidates before calling the scheduler. Codex PAT files that carry `access_token` metadata can appear in that pool.
+- The plugin registers `scheduler_across_priorities` so Live picks see every available OAuth-kind priority tier, then intersects that set with `live_auth_ids`. A higher-priority PAT therefore cannot hide an allowlisted Plus OAuth credential.
 - CPA v8.0.12 currently passes an empty scheduler model on this OAuth-only local path. The plugin recognizes that host call shape, while also accepting the canonical `gpt-live-1-codex` model when a future host passes it explicitly.
-- `cpa-live-voice` intersects the filtered candidate inventory against `live_auth_ids` and applies the selection rules.
+- Allowlist matching accepts the host auth ID, its basename, and `path` / `source` attribute basenames.
+- Disabled auth files are dropped by CPA before scheduler pick. Host Inventory Check only verifies that the filename exists; it does not mean the credential is enabled.
 
 ### 3. Home Deployment Limitation
 - Deployments with CLIProxyAPIHome enabled (`home.enabled: true`) bypass local plugin schedulers in CPA core.

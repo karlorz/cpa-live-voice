@@ -21,16 +21,25 @@ func IsLiveRequest(req pluginapi.SchedulerPickRequest) bool {
 	}
 
 	// CPA v8.0.12 deliberately omits the model when its Live handler calls
-	// SelectAuthByKind. At that point CPA has already restricted candidates to
-	// OAuth credentials. Reject an explicit non-OAuth marker while accepting
-	// legacy OAuth records that do not expose auth_kind to scheduler plugins.
+	// SelectAuthByKind. That filter uses AuthKind(), which treats Codex PAT
+	// files with access_token metadata as oauth even when auth_kind=pat.
+	// Only an explicit API-key marker means this empty-model call is ordinary.
 	for _, candidate := range req.Candidates {
 		kind := strings.ToLower(strings.TrimSpace(candidate.Attributes["auth_kind"]))
-		if kind != "" && kind != "oauth" && kind != "oauth2" {
+		if isExplicitAPIKeyKind(kind) {
 			return false
 		}
 	}
 	return true
+}
+
+func isExplicitAPIKeyKind(kind string) bool {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "apikey", "api_key", "api-key":
+		return true
+	default:
+		return false
+	}
 }
 
 func hasProvider(req pluginapi.SchedulerPickRequest, provider string) bool {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -73,8 +74,7 @@ func (s *SchedulerCore) PickAuth(req pluginapi.SchedulerPickRequest) (pluginapi.
 
 	var matchingCandidates []pluginapi.SchedulerAuthCandidate
 	for _, candidate := range req.Candidates {
-		id := strings.TrimSpace(candidate.ID)
-		if _, ok := allowlist[id]; ok {
+		if candidateMatchesAllowlist(candidate, allowlist) {
 			matchingCandidates = append(matchingCandidates, candidate)
 		}
 	}
@@ -118,4 +118,54 @@ func (s *SchedulerCore) PickAuth(req pluginapi.SchedulerPickRequest) (pluginapi.
 		Handled: true,
 		AuthID:  selectedID,
 	}, nil
+}
+
+func candidateMatchesAllowlist(candidate pluginapi.SchedulerAuthCandidate, allowlist map[string]struct{}) bool {
+	for _, id := range candidateAliasIDs(candidate) {
+		if _, ok := allowlist[id]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func candidateAliasIDs(candidate pluginapi.SchedulerAuthCandidate) []string {
+	values := []string{candidate.ID}
+	if candidate.Attributes != nil {
+		values = append(values, candidate.Attributes["path"], candidate.Attributes["source"])
+	}
+	return uniqueIDAliases(values...)
+}
+
+func uniqueIDAliases(ids ...string) []string {
+	seen := make(map[string]struct{}, len(ids)*2)
+	out := make([]string, 0, len(ids)*2)
+	add := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		if _, exists := seen[value]; exists {
+			return
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	for _, id := range ids {
+		add(id)
+		base := filepath.Base(strings.TrimSpace(id))
+		if base != "" && base != "." && base != string(filepath.Separator) {
+			add(base)
+		}
+	}
+	return out
+}
+
+func configuredIDMatchesInventory(configuredID string, candidateAliases map[string]struct{}) bool {
+	for _, alias := range uniqueIDAliases(configuredID) {
+		if _, ok := candidateAliases[alias]; ok {
+			return true
+		}
+	}
+	return false
 }

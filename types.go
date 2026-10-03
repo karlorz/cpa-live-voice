@@ -10,7 +10,7 @@ import (
 const (
 	PluginID               = "cpa-live-voice"
 	PluginName             = "cpa-live-voice"
-	PluginVersion          = "0.1.1"
+	PluginVersion          = "0.1.2"
 	PluginAuthor           = "karlorz"
 	PluginGitHubRepository = "https://github.com/karlorz/cpa-live-voice"
 	PluginLogo             = "https://github.com/karlorz/cpa-live-voice"
@@ -135,8 +135,9 @@ type registration struct {
 }
 
 type registrationCapability struct {
-	Scheduler     bool `json:"scheduler"`
-	ManagementAPI bool `json:"management_api"`
+	Scheduler                 bool `json:"scheduler"`
+	SchedulerAcrossPriorities bool `json:"scheduler_across_priorities,omitempty"`
+	ManagementAPI             bool `json:"management_api"`
 }
 
 type managementRegistrationResponse struct {

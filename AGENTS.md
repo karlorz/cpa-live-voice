@@ -5,7 +5,7 @@ Dynamic C-shared ABI plugin for CLIProxyAPI (CPA) providing dedicated candidate 
 ## Repository Metadata
 - GitHub: https://github.com/karlorz/cpa-live-voice
 - Plugin ID: `cpa-live-voice`
-- Version: `0.1.1`
+- Version: `0.1.2`
 
 ## Commands
 ```bash
@@ -13,7 +13,7 @@ gofmt -s -w .                 # Format Go source code (required after Go edits)
 go vet ./...                  # Vet packages
 go test -v -race ./...        # Run unit & integration tests with race detector
 make build                    # Build native dynamic library (bin/cpa-live-voice.<ext>)
-make package VERSION=0.1.1    # Build and package release zip + checksums.txt
+make package VERSION=0.1.2    # Build and package release zip + checksums.txt
 make check                    # Validate release package structure using check_package.py
 make clean                    # Remove bin/ and dist/
 ```

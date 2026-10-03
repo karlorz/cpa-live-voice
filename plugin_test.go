@@ -183,6 +183,15 @@ func TestClassifier(t *testing.T) {
 			wantLive: false,
 		},
 		{
+			name:     "empty-model Codex PAT plus OAuth still classified live",
+			provider: "codex",
+			candidates: []pluginapi.SchedulerAuthCandidate{
+				{ID: "codex-pat-team.json", Attributes: map[string]string{"auth_kind": "pat"}},
+				{ID: "codex-plus.json", Attributes: map[string]string{"auth_kind": "oauth"}},
+			},
+			wantLive: true,
+		},
+		{
 			name:     "different model for codex",
 			provider: "codex",
 			model:    "gpt-4o",
@@ -312,6 +321,47 @@ func TestSchedulerRouting(t *testing.T) {
 			if picks[i] != expected[i] {
 				t.Errorf("pick %d = %q, want %q", i, picks[i], expected[i])
 			}
+		}
+	})
+
+	t.Run("Live traffic matches basename of host candidate ID", func(t *testing.T) {
+		req := pluginapi.SchedulerPickRequest{
+			Provider: "codex",
+			Model:    "gpt-live-1-codex",
+			Candidates: []pluginapi.SchedulerAuthCandidate{
+				{ID: "codex-pat-team.json"},
+				{
+					ID: "/root/.cli-proxy-api/auth-live-2",
+					Attributes: map[string]string{
+						"path": "/root/.cli-proxy-api/auth-live-2",
+					},
+				},
+			},
+		}
+		resp, err := scheduler.PickAuth(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.AuthID != "/root/.cli-proxy-api/auth-live-2" {
+			t.Errorf("auth_id = %q, want host candidate ID whose basename is allowlisted", resp.AuthID)
+		}
+	})
+
+	t.Run("Live traffic selects allowlisted OAuth among higher-priority PAT candidates", func(t *testing.T) {
+		req := pluginapi.SchedulerPickRequest{
+			Provider: "codex",
+			Model:    "",
+			Candidates: []pluginapi.SchedulerAuthCandidate{
+				{ID: "codex-pat-team.json", Attributes: map[string]string{"auth_kind": "pat"}, Priority: 100},
+				{ID: "auth-live-1", Attributes: map[string]string{"auth_kind": "oauth"}, Priority: 99},
+			},
+		}
+		resp, err := scheduler.PickAuth(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.AuthID != "auth-live-1" {
+			t.Errorf("auth_id = %q, want allowlisted oauth candidate auth-live-1", resp.AuthID)
 		}
 	})
 
@@ -629,7 +679,7 @@ func TestPluginABICallDispatch(t *testing.T) {
 	if reg.Metadata.Name != PluginName || reg.Metadata.Version != PluginVersion {
 		t.Errorf("registration metadata mismatch: %+v", reg.Metadata)
 	}
-	if !reg.Capabilities.Scheduler || !reg.Capabilities.ManagementAPI {
+	if !reg.Capabilities.Scheduler || !reg.Capabilities.SchedulerAcrossPriorities || !reg.Capabilities.ManagementAPI {
 		t.Errorf("registration capabilities mismatch: %+v", reg.Capabilities)
 	}
 

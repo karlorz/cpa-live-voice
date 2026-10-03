@@ -223,8 +223,9 @@ func buildPluginRegistration() registration {
 			},
 		},
 		Capabilities: registrationCapability{
-			Scheduler:     true,
-			ManagementAPI: true,
+			Scheduler:                 true,
+			SchedulerAcrossPriorities: true,
+			ManagementAPI:             true,
 		},
 	}
 }
