@@ -40,6 +40,7 @@ jobs:
 
       - name: Extract version
         id: version
+        shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
