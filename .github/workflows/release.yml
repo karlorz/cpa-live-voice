@@ -87,3 +87,38 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+
+  update-registry:
+    name: Update plugin registry entry
+    needs: publish-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Bump registry.json version
+        run: |
+          jq --arg v "${{ steps.version.outputs.version }}" \
+            '(.plugins[] | select(.id == "cpa-live-voice")).version = $v' \
+            registry.json > registry.json.tmp
+          mv registry.json.tmp registry.json
+
+      - name: Commit and push registry update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          if git diff --cached --quiet; then
+            echo "registry.json already up to date"
+          else
+            git commit -m "chore: bump registry.json to ${{ steps.version.outputs.version }}"
+            git push origin main
+          fi

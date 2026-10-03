@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "plugins": [
+    {
+      "id": "cpa-live-voice",
+      "name": "CPA Live Voice Scheduler",
+      "description": "Routes Codex Live/Realtime voice traffic to an approved OAuth credential pool while delegating ordinary Codex traffic to CPA's built-in scheduler, preserving PAT channel eligibility.",
+      "author": "karlorz",
+      "version": "0.1.0",
+      "repository": "https://github.com/karlorz/cpa-live-voice",
+      "homepage": "https://github.com/karlorz/cpa-live-voice",
+      "license": "MIT",
+      "tags": [
+        "scheduler",
+        "codex",
+        "live",
+        "voice",
+        "oauth",
+        "management"
+      ]
+    }
+  ]
+}

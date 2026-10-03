@@ -32,6 +32,22 @@ A standalone dynamic C-shared ABI plugin for [CLIProxyAPI](https://github.com/ro
 
 ---
 
+## Installation
+
+### Via CPA Plugin Store (recommended)
+
+Register this repository as a third-party plugin source under **Plugins → Third-party Plugin Sources** in the CPA management panel:
+
+```
+https://raw.githubusercontent.com/karlorz/cpa-live-voice/refs/heads/main/registry.json
+```
+
+The store resolves artifacts from this repository's GitHub releases and verifies them against `checksums.txt`.
+
+### Manual install
+
+Download `cpa-live-voice_<version>_<goos>_<goarch>.zip` and `checksums.txt` from [Releases](https://github.com/karlorz/cpa-live-voice/releases), verify the archive against the checksums, and extract the dynamic library into your CPA plugin directory.
+
 ## Configuration
 
 Add the plugin configuration under `plugins.configs.cpa-live-voice` in your CPA `config.yaml`:
